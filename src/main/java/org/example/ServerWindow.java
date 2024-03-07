@@ -2,10 +2,11 @@ package org.example;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.LinkedList;
+import java.awt.event.*;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class ServerWindow extends JFrame {
     public static final int POX_X = 500;
@@ -17,7 +18,8 @@ public class ServerWindow extends JFrame {
     private final JButton btnStop;
     private final JTextArea log;
     private boolean isServerWorking;
-    private static List<ClientGUI> connectedClient = new LinkedList<>();
+    private static List<ClientGUI> connectedClient = new ArrayList<>();
+    private static Stack<String> clientLog = new Stack<>();
 
     public static void main(String[] args) {
         new ServerWindow();
@@ -39,7 +41,7 @@ public class ServerWindow extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 isServerWorking = false;
-                clearDestinationsForClients();
+                sendResponseToDisconnectionForClients();
 
                 log.append("Server stopped \n");
                 for (ClientGUI client : connectedClient) {
@@ -54,7 +56,7 @@ public class ServerWindow extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 isServerWorking = true;
-                addDestinationsForClients();
+                sendResponseToSuccessConnectionForClients();
 
                 log.append("Server started \n");
                 for (ClientGUI client : connectedClient) {
@@ -74,9 +76,27 @@ public class ServerWindow extends JFrame {
         //TextArea/////////////////////////////////////////////////////
         log = new JTextArea();
         log.setEditable(false);
+
+        try(FileInputStream logPuller = new FileInputStream("chat/serverLog.chat")) {
+            int read;
+            while ((read = logPuller.read()) != -1){
+                log.append(String.valueOf((char) read));
+            }
+        } catch (Exception e) {}
+
         JScrollPane logScroll = new JScrollPane(log);
         add(logScroll, BorderLayout.CENTER);
         //TextArea/////////////////////////////////////////////////////
+
+        //Window/////////////////////////////////////////////////////
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                saveLog();
+                super.windowClosing(e);
+            }
+        });
+        //Window/////////////////////////////////////////////////////
 
         setVisible(true);
     }
@@ -85,27 +105,70 @@ public class ServerWindow extends JFrame {
         connectedClient.add(client);
     }
 
-    public void sendMessage(String sender, String destinationLogin, String message){
+    public void sendMessage(String sender, String message){
+        if(!isServerWorking || stringIsEmpty(message)){
+            return;
+        }
+
+        clientLog.push(sender + ": " + message + '\n');
         for (ClientGUI client : connectedClient) {
-            if(client.getLogin().equals(destinationLogin)){
-                client.getLog().append(sender + ": " + message + '\n');
-            }
+            client.getLog().append(clientLog.peek());
         }
 
         log.append(sender + ": " + message + '\n');
     }
 
-    private void addDestinationsForClients(){
+    private void sendResponseToSuccessConnectionForClients(){
         for (ClientGUI client : connectedClient) {
-            for (ClientGUI item : connectedClient) {
-                client.getDestination().addItem(item.getLogin());
-            }
+            client.getLog().append("Connection success \n \n");
+
+            try(FileInputStream logPuller = new FileInputStream("chat/clientsLog.chat")) {
+                int read;
+                while ((read = logPuller.read()) != -1){
+                    client.getLog().append(String.valueOf((char) read));
+                }
+            } catch (Exception e) {}
         }
     }
 
-    private void clearDestinationsForClients(){
+    private void sendResponseToDisconnectionForClients() {
         for (ClientGUI client : connectedClient) {
-            client.getDestination().removeAllItems();
+            client.getLog().append("Connection failed \n \n");
         }
     }
+
+    private void saveLog(){
+        File logFile = new File("chat/");
+        logFile.mkdirs();
+
+        logFile = new File("chat/", "serverLog.chat");
+        try(FileOutputStream serverWriter = new FileOutputStream(logFile, true)) {
+            serverWriter.write(log.getText().getBytes());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, e.getMessage(), "Failed save server log", JOptionPane.ERROR_MESSAGE);
+        }
+
+        logFile = new File("chat/", "clientsLog.chat");
+        try(FileOutputStream serverWriter = new FileOutputStream(logFile, true)) {
+            for (String logLine :clientLog) {
+                serverWriter.write(logLine.getBytes());
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, e.getMessage(), "Failed save server log", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public boolean stringIsEmpty(String str){
+        if (str.isEmpty()) return true;
+
+        char[] strArray = str.toCharArray();
+        int countNotEmpty = 0;
+        for (char elem : strArray) {
+            if(elem != ' ') countNotEmpty++;
+        }
+
+        return countNotEmpty < 1;
+    }
+
+
 }

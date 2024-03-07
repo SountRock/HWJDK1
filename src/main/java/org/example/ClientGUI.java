@@ -19,7 +19,6 @@ public class ClientGUI extends JFrame {
     private final JPanel panelButton;
     private final JTextField tfMessage;
     private final JButton btnSend;
-    private  JComboBox destinations;
 
     public static void main(String[] args) {
         new ClientGUI("127.0.0.1", "8080", "Alex12","12345", new ServerWindow());
@@ -48,19 +47,16 @@ public class ClientGUI extends JFrame {
         panelButton = new JPanel(new BorderLayout());
         tfMessage = new JTextField();
         btnSend = new JButton("Send");
-        destinations = new JComboBox<>();
 
         btnSend.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                log.append(tfLogin.getText() + ": " + tfMessage.getText() + '\n');
-                serverWindow.sendMessage(tfLogin.getText(), destinations.getSelectedItem().toString(), tfMessage.getText());
+                serverWindow.sendMessage(tfLogin.getText(), tfMessage.getText());
 
                 tfMessage.setText(null);
             }
         });
 
-        panelButton.add(destinations, BorderLayout.NORTH);
         panelButton.add(tfMessage, BorderLayout.CENTER);
         panelButton.add(btnSend, BorderLayout.EAST);
         add(panelButton, BorderLayout.SOUTH);
@@ -76,10 +72,7 @@ public class ClientGUI extends JFrame {
         //Log/////////////////////////////////////////////////////
 
         if(serverWindow != null){
-            log.append("Connection success \n \n");
             serverWindow.addClient(this);
-        } else {
-            log.append("Connection failed \n \n");
         }
 
         setVisible(true);
@@ -87,10 +80,6 @@ public class ClientGUI extends JFrame {
 
     public String getLogin() {
         return tfLogin.getText();
-    }
-
-    public JComboBox getDestination() {
-        return destinations;
     }
 
     public JTextArea getLog() {
